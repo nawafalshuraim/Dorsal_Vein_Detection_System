@@ -6,22 +6,24 @@ from skimage import img_as_float # since Frangi expects float images, not uint8.
 
 # Paths
 input_folder = "data/DorsalHandVeins_DB1_png"
-output_folder = "output/DB1_Final"
+output_folder = "output/DB1_Final"   # vein detection overlays
+mask_folder   = "output/DB2_Final"   # binary masks
 
 os.makedirs(output_folder, exist_ok=True)
+os.makedirs(mask_folder, exist_ok=True)
 
 # Parameters (tunable)
 clahe_clip = 2.0 # controls contrast amplification
 clahe_grid = (8,8)
 
-frangi_threshold = 30 # lower value: detect more faint veins, Higher value: stricter detection
+frangi_threshold = 45 # lower value: detect more faint veins, Higher value: stricter detection
 adaptive_block = 25 # must be odd, larger block more global behavior.
-adaptive_C = 2 # subtracts constant to fine-tune sensitivity
+adaptive_C = 6 # subtracts constant to fine-tune sensitivity
 
-min_area = 200 # removes small contours (noise). Anything smaller than 200 pixels is ignored.
+min_area = 500 # removes small contours (noise). Anything smaller than 500 pixels is ignored.
 
-kernel_open = np.ones((3,3), np.uint8) # 3×3 for noise removal
-kernel_close = np.ones((5,5), np.uint8) # 5×5 for connecting broken veins
+kernel_open = np.ones((5,5), np.uint8) # 5×5 erases thin hair strands (hair ~1-3px, veins ~5-15px)
+kernel_close = np.ones((7,7), np.uint8) # 7×7 for connecting broken veins
 
 clahe = cv2.createCLAHE(
     clipLimit=clahe_clip,
@@ -29,10 +31,10 @@ clahe = cv2.createCLAHE(
 )
 
 # Processing Loop
-for filename in os.listdir(input_folder):
+all_files = [f for f in os.listdir(input_folder)
+             if f.lower().endswith((".png", ".jpg", ".jpeg"))]
 
-    if not filename.lower().endswith((".png", ".jpg", ".jpeg")):
-        continue
+for filename in all_files[:5]:
 
     path = os.path.join(input_folder, filename)
     img = cv2.imread(path, 0)
@@ -43,7 +45,10 @@ for filename in os.listdir(input_folder):
     # CLAHE
     cl = clahe.apply(img)
 
-    # Adaptive Threshold 
+    # Gentle blur to suppress thin hair strands before thresholding
+    cl = cv2.GaussianBlur(cl, (5, 5), 0)
+
+    # Adaptive Threshold
     adaptive = cv2.adaptiveThreshold(
         cl,
         255,
@@ -92,6 +97,17 @@ for filename in os.listdir(input_folder):
         kernel_close
     )
 
+    # Remove small disconnected dots from mask
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(cleaned, connectivity=8)
+    clean_mask = np.zeros_like(cleaned)
+    for i in range(1, num_labels):
+        if stats[i, cv2.CC_STAT_AREA] >= min_area:
+            clean_mask[labels == i] = 255
+    cleaned = clean_mask
+
+    # Save mask to DB2_Final
+    cv2.imwrite(os.path.join(mask_folder, filename), cleaned)
+
     # Contours
     contours, _ = cv2.findContours(
         cleaned,
@@ -104,7 +120,8 @@ for filename in os.listdir(input_folder):
     filtered = []
     for cnt in contours:
         if cv2.contourArea(cnt) > min_area:
-            filtered.append(cnt)
+            smoothed = cv2.approxPolyDP(cnt, epsilon=1.5, closed=True)
+            filtered.append(smoothed)
 
     # If filtering removed everything, fallback to original contours
     if len(filtered) == 0:

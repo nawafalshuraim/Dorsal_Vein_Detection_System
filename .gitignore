@@ -1,2 +1,4 @@
 Data/
 Forearm_data/
+__pycache__/
+*.pyc
