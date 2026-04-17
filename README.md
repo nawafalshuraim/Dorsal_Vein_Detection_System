@@ -24,6 +24,20 @@ Clone the dataset and place it in a `Data/` folder at the root of this project:
 git clone https://github.com/wilchesf/dorsalhandveins.git Data
 ```
 
+## Output
+
+### DB1
+
+| | | | | |
+|:---:|:---:|:---:|:---:|:---:|
+| ![](output/DB1_Final/person_005_db1_L1.png) | ![](output/DB1_Final/person_014_db1_L3.png) | ![](output/DB1_Final/person_023_db1_L3.png) | ![](output/DB1_Final/person_024_db1_R2.png) | ![](output/DB1_Final/person_032_db1_L1.png) |
+
+### DB2
+
+| | | | | |
+|:---:|:---:|:---:|:---:|:---:|
+| ![](output/DB2_Final/person_005_db1_L1.png) | ![](output/DB2_Final/person_014_db1_L3.png) | ![](output/DB2_Final/person_023_db1_L3.png) | ![](output/DB2_Final/person_024_db1_R2.png) | ![](output/DB2_Final/person_032_db1_L1.png) |
+
 ## Requirements
 
 ```bash
